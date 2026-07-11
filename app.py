@@ -23,7 +23,7 @@ except:
 @st.cache_resource
 def setup_rag_system():
     try:
-        loader = PyPDFLoader(r"C:\Users\Diksha Uike\Downloads\ET AI\safety_rules.pdf") # Use your full path!
+        loader = PyPDFLoader("safety_rules.pdf")
         pages = loader.load()
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
         chunks = text_splitter.split_documents(pages)
