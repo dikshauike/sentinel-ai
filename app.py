@@ -71,18 +71,16 @@ def analyze_shift_handover(iot_data, logbook, retriever):
     system_prompt = """You are Sentinel AI, an expert industrial safety assistant and Emergency Response Orchestrator.
     Your job is to compare the RAW IoT sensor data against the Outgoing Supervisor's manual logbook to find discrepancies and compound risks.
     
-    If a CRITICAL compound risk is detected (e.g., gas leak + hot work permit + worker in zone):
-    1. Act as an Emergency Response Orchestrator.
-    2. Generate a preliminary regulatory-compliant incident report.
-    3. The report MUST include:
-       - Immediate Evacuation Protocol (which zones to evacuate)
-       - Alert Routing (who to notify)
-       - Preserved Sensor Evidence (the exact IoT/CCTV readings)
-       - Regulatory Violations (cited from the provided Context)
+    Format your response EXACTLY like this:
     
-    Also, provide a 3-bullet point mandatory safety briefing for the incoming shift.
-    Finally, generate a "Corrective Action Workflow" with step-by-step instructions to fix the compliance deviations.
-    Format your response clearly using Markdown.
+    EXECUTIVE SUMMARY:
+    [Exactly 3 bullet points. The most critical actions requiring human attention right now. Be blunt and urgent.]
+    
+    DETAILED INCIDENT REPORT:
+    [Include Immediate Evacuation Protocol, Alert Routing, Preserved Sensor Evidence, and Regulatory Violations cited from the context]
+    
+    MANDATORY BRIEFING & CORRECTIVE ACTION WORKFLOW:
+    [3-bullet point briefing for incoming shift + step-by-step corrective actions]
     """
     human_prompt = f"""
     Here is the RAW IoT DATA:
@@ -203,8 +201,28 @@ if st.button("🚨 Analyze Shift Handover", use_container_width=True):
         ai_result = analyze_shift_handover(iot_data, logbook, retriever)
     
     st.success("Analysis Complete! Discrepancies & Regulatory Violations Found.")
-    st.subheader("🤖 Sentinel AI Briefing for Incoming Shift B:")
-    st.markdown(ai_result)
+    
+    # --- THE RED ZONE EXECUTIVE SUMMARY ---
+    if "EXECUTIVE SUMMARY:" in ai_result:
+        parts = ai_result.split("DETAILED INCIDENT REPORT:")
+        summary_part = parts[0].replace("EXECUTIVE SUMMARY:", "").strip()
+        detailed_part = "DETAILED INCIDENT REPORT:" + parts[1] if len(parts) > 1 else ""
+        
+        # The massive, impossible-to-miss Red Banner
+        st.markdown(f"""
+        <div style="background-color:#ffcccc; padding:20px; border-radius:10px; border-left:10px solid #ff0000;">
+        <h3 style="color:#cc0000; margin-bottom:10px;">🚨 EXECUTIVE SUMMARY: ACT NOW</h3>
+        <ul style="color:#990000; font-size:18px; font-weight:bold;">
+        {''.join(f'<li>{line.strip().replace("- ", "")}</li>' for line in summary_part.split(chr(10)) if line.strip())}
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.subheader("🤖 Sentinel AI Detailed Report for Incoming Shift B:")
+        st.markdown(detailed_part)
+    else:
+        st.subheader("🤖 Sentinel AI Briefing for Incoming Shift B:")
+        st.markdown(ai_result)
     
     # --- SAVE FORENSIC SNAPSHOT ---
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
