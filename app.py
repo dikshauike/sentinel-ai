@@ -12,8 +12,9 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
+import re
 
-# 1. API Key Setup (Reads from Streamlit Secrets safely)
+# 1. API Key Setup
 try:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 except:
@@ -21,7 +22,6 @@ except:
 
 st.set_page_config(page_title="Sentinel AI - Shift Handover", layout="wide", page_icon="🛡️")
 
-# Initialize session state for Forensic Snapshots
 if 'snapshots' not in st.session_state:
     st.session_state.snapshots = {}
 
@@ -42,7 +42,6 @@ def setup_rag_system():
 retriever = setup_rag_system()
 
 def get_shift_data():
-    # Includes CCTV Mock Alert, Historical Incidents, and Zone B Hot Work Permit
     iot_data = {
         "shift_end_time": "16:00",
         "zone_a_gas_max_ppm": 120,  
@@ -67,16 +66,19 @@ def analyze_shift_handover(iot_data, logbook, retriever):
     search_query = "safety regulations for gas leaks, open valves, hot work permits, and worker safety"
     retrieved_docs = retriever.invoke(search_query)
     rules_context = "\n".join([doc.page_content for doc in retrieved_docs])
-
+    
+    # --- THE ULTIMATE STRICT PROMPT ---
     system_prompt = """You are Sentinel AI, an expert industrial safety assistant and Emergency Response Orchestrator.
     Your job is to compare the RAW IoT sensor data against the Outgoing Supervisor's manual logbook to find discrepancies and compound risks.
     
-    Format your response EXACTLY like this using Markdown. DO NOT write long paragraphs. Use bullet points only.
+    You must format your response EXACTLY as follows. Do not use any markdown symbols like * or # in the EXECUTIVE SUMMARY. Use plain text only.
     
     EXECUTIVE SUMMARY:
-    [Exactly 3 bullet points. The most critical actions requiring human attention right now. Be blunt and urgent.]
+    1. [First critical action. Be blunt and urgent.]
+    2. [Second critical action.]
+    3. [Third critical action.]
     
-    ### 🚨 DETAILED INCIDENT REPORT
+    ### DETAILED INCIDENT REPORT
     **Immediate Evacuation Protocol:**
     - [Bullet point]
     **Alert Routing:**
@@ -86,16 +88,14 @@ def analyze_shift_handover(iot_data, logbook, retriever):
     **Regulatory Violations:**
     - [Bullet point citing the exact rule/section]
     
-    ### 📋 MANDATORY BRIEFING & CORRECTIVE ACTION WORKFLOW
+    ### MANDATORY BRIEFING & CORRECTIVE ACTION WORKFLOW
     **Incoming Shift Briefing:**
     - [3 bullet points]
     **Corrective Action Workflow:**
     1. [Step 1]
     2. [Step 2]
     3. [Step 3]
-    ...
     """
-   
     human_prompt = f"""
     Here is the RAW IoT DATA:
     {json.dumps(iot_data, indent=2)}
@@ -140,7 +140,6 @@ if selected_snapshot != "None":
         st.subheader("📝 Outgoing Supervisor Logbook (Historical)")
         st.info(logbook)
         
-    # Show Historical Map
     st.subheader("🗺️ Geospatial Plant Risk Map (Historical)")
     df_risk = pd.DataFrame({
         "Zone": ["Zone A (Hot Work)", "Zone B (Gas Leak)", "Zone C (Confined Space)"],
@@ -178,11 +177,9 @@ with col2:
     st.subheader("📝 Outgoing Supervisor Logbook")
     st.info(logbook)
 
-# --- MOCK CCTV ALERT ---
 if iot_data.get("cctv_analytics_alert"):
     st.error(f"📹 CCTV ANALYTICS ALERT: {iot_data['cctv_analytics_alert']}")
 
-# --- THE GEOSPATIAL HEATMAP ---
 st.subheader("🗺️ Geospatial Plant Risk Map")
 df_risk = pd.DataFrame({
     "Zone": ["Zone A (Hot Work)", "Zone B (Gas Leak)", "Zone C (Confined Space)"],
@@ -216,18 +213,29 @@ if st.button("🚨 Analyze Shift Handover", use_container_width=True):
     
     st.success("Analysis Complete! Discrepancies & Regulatory Violations Found.")
     
-    # --- THE RED ZONE EXECUTIVE SUMMARY ---
+    # --- THE BULLETPROOF RED ZONE EXECUTIVE SUMMARY ---
     if "EXECUTIVE SUMMARY:" in ai_result:
-        parts = ai_result.split("DETAILED INCIDENT REPORT:")
+        parts = ai_result.split("### DETAILED INCIDENT REPORT")
         summary_part = parts[0].replace("EXECUTIVE SUMMARY:", "").strip()
-        detailed_part = "DETAILED INCIDENT REPORT:" + parts[1] if len(parts) > 1 else ""
+        detailed_part = "### DETAILED INCIDENT REPORT" + parts[1] if len(parts) > 1 else ""
         
-        # The massive, impossible-to-miss Red Banner
+        # Aggressive cleaning of markdown symbols
+        clean_lines = []
+        for line in summary_part.split('\n'):
+            line = line.strip()
+            if line:
+                # Remove all *, #, and leading numbers like "1. "
+                line = re.sub(r'^\d+\.\s*', '', line) # Remove "1. "
+                line = line.replace('**', '').replace('*', '').replace('#', '')
+                line = line.lstrip('- ').strip()
+                if line:
+                    clean_lines.append(line)
+        
         st.markdown(f"""
         <div style="background-color:#ffcccc; padding:20px; border-radius:10px; border-left:10px solid #ff0000;">
         <h3 style="color:#cc0000; margin-bottom:10px;">🚨 EXECUTIVE SUMMARY: ACT NOW</h3>
-        <ul style="color:#990000; font-size:18px; font-weight:bold;">
-        {''.join(f'<li>{line.strip().replace("- ", "")}</li>' for line in summary_part.split(chr(10)) if line.strip())}
+        <ul style="color:#990000; font-size:18px; font-weight:bold; padding-left:20px;">
+        {''.join(f'<li>{line}</li>' for line in clean_lines)}
         </ul>
         </div>
         """, unsafe_allow_html=True)
