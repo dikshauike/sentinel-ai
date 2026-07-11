@@ -13,7 +13,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
-# 1. API Key Setup
+# 1. API Key Setup (Reads from Streamlit Secrets safely)
 try:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 except:
@@ -42,14 +42,14 @@ def setup_rag_system():
 retriever = setup_rag_system()
 
 def get_shift_data():
-    # Now includes CCTV Mock Alert and Historical Incidents!
+    # Includes CCTV Mock Alert, Historical Incidents, and Zone B Hot Work Permit
     iot_data = {
         "shift_end_time": "16:00",
         "zone_a_gas_max_ppm": 120,  
         "zone_b_gas_max_ppm": 380,  
         "zone_b_valve_status": "Open 20%", 
         "active_permits": ["Hot Work - Zone B", "Confined Space - Zone C"],
-        "cctv_analytics_alert": "Person detected entering Zone B during active gas leak", # Mock CV
+        "cctv_analytics_alert": "Person detected entering Zone B during active gas leak",
         "historical_incidents": "2023-11-04: Minor gas leak in Zone B due to open valve. 2024-01-15: Fire near Zone B due to unreported gas."
     }
     supervisor_logbook = """
@@ -127,8 +127,30 @@ if selected_snapshot != "None":
     with col2:
         st.subheader("📝 Outgoing Supervisor Logbook (Historical)")
         st.info(logbook)
+        
+    # Show Historical Map
+    st.subheader("🗺️ Geospatial Plant Risk Map (Historical)")
+    df_risk = pd.DataFrame({
+        "Zone": ["Zone A (Hot Work)", "Zone B (Gas Leak)", "Zone C (Confined Space)"],
+        "X_Coord": [10, 20, 30],
+        "Y_Coord": [10, 20, 10],
+        "Risk_Level": [50, 100, 20]
+    })
+    df_workers = pd.DataFrame({
+        "Worker_ID": ["W-01", "W-02", "W-03"],
+        "X_Coord": [12, 22, 30],
+        "Y_Coord": [11, 19, 12]
+    })
+    fig = px.scatter(df_risk, x="X_Coord", y="Y_Coord", size="Risk_Level", color="Risk_Level",
+                     color_continuous_scale=["green", "yellow", "red"], text="Zone",
+                     title="Frozen Plant Risk Map")
+    fig.add_scatter(x=df_workers["X_Coord"], y=df_workers["Y_Coord"], mode="markers+text", 
+                    text=df_workers["Worker_ID"], marker=dict(size=15, color="blue", symbol="x"),
+                    name="Workers")
+    fig.update_layout(plot_bgcolor='#0e1117', paper_bgcolor='#0e1117', font=dict(color='white'))
+    st.plotly_chart(fig, use_container_width=True)
     
-    st.subheader("🤖 Sentinel AI Historical Briefing:")
+    st.subheader("🤖 Sentinel AI Historical Briefing & Incident Report:")
     st.markdown(ai_result)
     st.stop()
 
