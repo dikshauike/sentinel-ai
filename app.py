@@ -67,21 +67,35 @@ def analyze_shift_handover(iot_data, logbook, retriever):
     search_query = "safety regulations for gas leaks, open valves, hot work permits, and worker safety"
     retrieved_docs = retriever.invoke(search_query)
     rules_context = "\n".join([doc.page_content for doc in retrieved_docs])
-    
+
     system_prompt = """You are Sentinel AI, an expert industrial safety assistant and Emergency Response Orchestrator.
     Your job is to compare the RAW IoT sensor data against the Outgoing Supervisor's manual logbook to find discrepancies and compound risks.
     
-    Format your response EXACTLY like this:
+    Format your response EXACTLY like this using Markdown. DO NOT write long paragraphs. Use bullet points only.
     
     EXECUTIVE SUMMARY:
     [Exactly 3 bullet points. The most critical actions requiring human attention right now. Be blunt and urgent.]
     
-    DETAILED INCIDENT REPORT:
-    [Include Immediate Evacuation Protocol, Alert Routing, Preserved Sensor Evidence, and Regulatory Violations cited from the context]
+    ### 🚨 DETAILED INCIDENT REPORT
+    **Immediate Evacuation Protocol:**
+    - [Bullet point]
+    **Alert Routing:**
+    - [Bullet point]
+    **Preserved Sensor Evidence:**
+    - [Bullet point]
+    **Regulatory Violations:**
+    - [Bullet point citing the exact rule/section]
     
-    MANDATORY BRIEFING & CORRECTIVE ACTION WORKFLOW:
-    [3-bullet point briefing for incoming shift + step-by-step corrective actions]
+    ### 📋 MANDATORY BRIEFING & CORRECTIVE ACTION WORKFLOW
+    **Incoming Shift Briefing:**
+    - [3 bullet points]
+    **Corrective Action Workflow:**
+    1. [Step 1]
+    2. [Step 2]
+    3. [Step 3]
+    ...
     """
+   
     human_prompt = f"""
     Here is the RAW IoT DATA:
     {json.dumps(iot_data, indent=2)}
