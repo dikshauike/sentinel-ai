@@ -8,3 +8,4 @@ pypdf
 plotly
 pandas
 networkx
+gTTS
