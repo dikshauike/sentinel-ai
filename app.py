@@ -12,6 +12,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
+from gtts import gTTS
 import re
 
 # 1. API Key Setup
@@ -67,7 +68,6 @@ def analyze_shift_handover(iot_data, logbook, retriever):
     retrieved_docs = retriever.invoke(search_query)
     rules_context = "\n".join([doc.page_content for doc in retrieved_docs])
     
-    # --- THE ULTIMATE STRICT PROMPT ---
     system_prompt = """You are Sentinel AI, an expert industrial safety assistant and Emergency Response Orchestrator.
     Your job is to compare the RAW IoT sensor data against the Outgoing Supervisor's manual logbook to find discrepancies and compound risks.
     
@@ -88,6 +88,12 @@ def analyze_shift_handover(iot_data, logbook, retriever):
     **Regulatory Violations:**
     - [Bullet point citing the exact rule/section]
     
+    ### ROOT CAUSE INTELLIGENCE & HISTORICAL PREVENTION
+    Compare the current compound risk to known historical catastrophic plant events (e.g., BP Texas City Refinery explosion 2005, Visakhapatnam Steel Plant 2025, Bhopal Gas Tragedy 1984).
+    - **Historical Parallel:** [Which past event does this resemble and why?]
+    - **Root Cause Failure:** [What was the systemic human/technical failure in those events?]
+    - **Prevention Priority:** [How does our Corrective Action Workflow specifically prevent this from repeating?]
+    
     ### MANDATORY BRIEFING & CORRECTIVE ACTION WORKFLOW
     **Incoming Shift Briefing:**
     - [3 bullet points]
@@ -95,6 +101,9 @@ def analyze_shift_handover(iot_data, logbook, retriever):
     1. [Step 1]
     2. [Step 2]
     3. [Step 3]
+    
+    ### FIELD WORKER BROADCAST ALERT
+    [Generate a short, urgent SMS/WhatsApp message (max 20 words) in HINDI, warning the floor workers of the exact danger and telling them to evacuate. Use simple, everyday Hindi words.]
     """
     human_prompt = f"""
     Here is the RAW IoT DATA:
@@ -219,13 +228,11 @@ if st.button("🚨 Analyze Shift Handover", use_container_width=True):
         summary_part = parts[0].replace("EXECUTIVE SUMMARY:", "").strip()
         detailed_part = "### DETAILED INCIDENT REPORT" + parts[1] if len(parts) > 1 else ""
         
-        # Aggressive cleaning of markdown symbols
         clean_lines = []
         for line in summary_part.split('\n'):
             line = line.strip()
             if line:
-                # Remove all *, #, and leading numbers like "1. "
-                line = re.sub(r'^\d+\.\s*', '', line) # Remove "1. "
+                line = re.sub(r'^\d+\.\s*', '', line)
                 line = line.replace('**', '').replace('*', '').replace('#', '')
                 line = line.lstrip('- ').strip()
                 if line:
@@ -321,3 +328,36 @@ if st.button("🚨 Analyze Shift Handover", use_container_width=True):
         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
     )
     st.plotly_chart(fig_graph, use_container_width=True)
+    
+    # --- THE MULTILINGUAL FIELD WORKER ALERT & VOICE CALL ---
+    if "### FIELD WORKER BROADCAST ALERT" in ai_result:
+        broadcast_parts = ai_result.split("### FIELD WORKER BROADCAST ALERT")
+        broadcast_msg = broadcast_parts[1].strip()
+        
+        st.divider()
+        st.subheader("📱 Field Worker Broadcast & Voice Call")
+        st.markdown("##### AI-generated multilingual alert for instant dissemination to floor workers:")
+        
+        # Green box for the WhatsApp message
+        st.markdown(f"""
+        <div style="background-color:#dcf8c6; padding:15px; border-radius:10px; border-left:10px solid #25D366;">
+        <p style="color:#000000; font-size:16px; font-family: sans-serif; margin:0;">
+        {broadcast_msg}
+        </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Voice Call Generation using gTTS
+        with st.spinner("📞 Initiating Voice Call to Floor Workers..."):
+            try:
+                # Translate the Hindi text to speech
+                tts = gTTS(text=broadcast_msg, lang='hi', slow=False)
+                # Save to a temporary file
+                audio_file = "alert_voice.mp3"
+                tts.save(audio_file)
+                
+                # Play the audio in the app
+                st.audio(audio_file, format='audio/mp3')
+                st.success("✅ Voice alert broadcasted successfully to all registered devices.")
+            except Exception as e:
+                st.warning(f"Voice generation failed (network issue): {e}")
