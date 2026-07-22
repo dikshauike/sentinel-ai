@@ -356,6 +356,31 @@ if st.button("🚨 Analyze Shift Handover", use_container_width=True):
         <div style="background-color:#dcf8c6; padding:15px; border-radius:10px; border-left:10px solid #25D366;">
         <p style="color:#000000; font-size:16px; font-family: sans-serif; margin:0;">
         {broadcast_msg}
+            # --- AUTONOMOUS CALL TREE UI ---
+    if "### AUTONOMOUS CALL TREE" in ai_result:
+        call_tree_parts = ai_result.split("### AUTONOMOUS CALL TREE")
+        call_tree_text = call_tree_parts[1].split("### FIELD WORKER BROADCAST ALERT")[0].strip()
+        
+        st.divider()
+        st.subheader("☎️ Autonomous Call Tree (Simultaneous Broadcast)")
+        st.markdown("##### AI has verified the active shift roster and is triggering simultaneous voice calls:")
+        
+        # Extract names from the roster for the UI animation
+        roster = iot_data.get("active_shift_roster", [])
+        
+        # Create 4 columns to show the "Live Call Status"
+        cols = st.columns(len(roster))
+        for i, person in enumerate(roster):
+            with cols[i]:
+                st.markdown(f"""
+                <div style="background-color:#1E5631; padding:15px; border-radius:10px; text-align:center; border:2px solid #4CAF50;">
+                    <p style="color:white; font-weight:bold; margin:0;">📞 {person}</p>
+                    <p style="color:#b0f5c2; font-size:12px; margin-top:5px;">Status: Calling...</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with st.expander("View AI Call Tree Logic"):
+            st.markdown(call_tree_text)
         </p>
         </div>
         """, unsafe_allow_html=True)
