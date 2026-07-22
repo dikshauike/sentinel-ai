@@ -374,7 +374,7 @@ if st.button("🚨 Analyze Shift Handover", use_container_width=True):
             with cols[i]:
                 st.markdown(f"""
                 <div style="background-color:#1E5631; padding:15px; border-radius:10px; text-align:center; border:2px solid #4CAF50;">
-                    <p style="color:white; font-weight:bold; margin:0;">📞 {person}</p>
+                    <p style="color:white; font-weight:bold; margin:0;">CALLING: {person}</p>
                     <p style="color:#b0f5c2; font-size:12px; margin-top:5px;">Status: Calling...</p>
                 </div>
                 """, unsafe_allow_html=True)
