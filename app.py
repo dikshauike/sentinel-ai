@@ -44,13 +44,20 @@ retriever = setup_rag_system()
 
 def get_shift_data():
     iot_data = {
-        "shift_end_time": "16:00",
+        "shift_end_time": "14:00",
+        "current_shift": "Morning Shift (06:00 - 14:00)",
         "zone_a_gas_max_ppm": 120,  
         "zone_b_gas_max_ppm": 380,  
         "zone_b_valve_status": "Open 20%", 
         "active_permits": ["Hot Work - Zone B", "Confined Space - Zone C"],
         "cctv_analytics_alert": "Person detected entering Zone B during active gas leak",
-        "historical_incidents": "2023-11-04: Minor gas leak in Zone B due to open valve. 2024-01-15: Fire near Zone B due to unreported gas."
+        "historical_incidents": "2023-11-04: Minor gas leak in Zone B due to open valve. 2024-01-15: Fire near Zone B due to unreported gas.",
+        "active_shift_roster": [
+            "Raj (Shift Supervisor)",
+            "Amit (Floor Worker - Zone B)",
+            "Priya (Control Room Operator)",
+            "Suresh (Maintenance Lead)"
+        ]
     }
     supervisor_logbook = """
     Shift A Summary by Supervisor Raj:
@@ -104,6 +111,12 @@ def analyze_shift_handover(iot_data, logbook, retriever):
     
     ### FIELD WORKER BROADCAST ALERT
     [Generate a short, urgent SMS/WhatsApp message (max 20 words) in HINDI, warning the floor workers of the exact danger and telling them to evacuate. Use simple, everyday Hindi words.]
+    
+        ### AUTONOMOUS CALL TREE (SIMULTANEOUS BROADCAST)
+    Based on the 'current_shift' and 'active_shift_roster', generate a simultaneous call list.
+    - **Control Room Priority:** [Always include Control Room]
+    - **Active Shift Workers Called:** [List the specific workers currently on shift from the roster. Do NOT call off-shift workers.]
+    - **Simultaneous Execution:** [State that all calls are triggered at the exact same time via the API.]
     """
     human_prompt = f"""
     Here is the RAW IoT DATA:
